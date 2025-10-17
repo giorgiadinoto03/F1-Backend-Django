@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import *
 from .serializers import *
+from .filters import ResultFilter, RaceFilter, SessionFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .pagination import DefaultPagination # Import your pagination class
 
@@ -34,12 +35,9 @@ class RaceViewSet(viewsets.ModelViewSet):
     queryset = Race.objects.all()
     serializer_class = RaceSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = {
-        'year': ['exact'],
-        'country_code': ['exact'],
-    }
-    search_fields = ['meeting_name', 'location']
-    ordering_fields = ['year', 'meeting_name']
+    filterset_class = RaceFilter
+    search_fields = ['meeting_name', 'location', 'country_name']
+    ordering_fields = ['meeting_name', 'location']
     pagination_class = DefaultPagination # Apply pagination
 
 
@@ -47,11 +45,7 @@ class SessionViewSet(viewsets.ModelViewSet):
     queryset = Session.objects.select_related('race').all()
     serializer_class = SessionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = {
-        'race__meeting_key': ['exact'],
-        'session_type': ['exact'],
-        'session_key': ['exact'],
-    }
+    filterset_class = SessionFilter
     ordering_fields = ['date_start', 'session_name']
     pagination_class = DefaultPagination # Apply pagination
 
@@ -62,13 +56,7 @@ class ResultViewSet(viewsets.ModelViewSet):
     serializer_class = ResultSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     pagination_class = DefaultPagination # Apply pagination
-    # Definisci i campi su cui vuoi filtrare. DjangoFilterBackend li gestirà.
-    filterset_fields = {
-        'session__race__meeting_key': ['exact'], # Filtra per meeting_key esatta
-        'session__session_key': ['exact'], # Aggiungo anche session_key se vuoi filtrarla
-        'driver__number': ['exact'], # Filtra per numero di driver esatto
-        'position': ['exact'], # Solo posizione esatta, rimuoviamo lte e gte
-    }
+    filterset_class = ResultFilter
     ordering_fields = ['position', 'duration']
     # Ordinamento personalizzato: prima i classificati per posizione, poi i non classificati
     ordering = ['position', 'duration']
