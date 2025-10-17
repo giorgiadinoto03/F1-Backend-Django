@@ -151,7 +151,8 @@ Pannello: `http://127.0.0.1:8000/admin/`
 ## Idee evolutive
 - Pre-calcolo e salvataggio "materializzato" delle classifiche per sessione
 - Aggiunta di `updated_at`/`last_results_computed_at` per ricalcolo dei dati
-- Calcolo dei punti della stagione direttamente gestito dall' backend prendendo i dati dai risultati delle gare.
+- Calcolo dei punti della stagione direttamente gestito dall' backend prendendo i dati dai risultati delle gare
+- **Automazione aggiornamenti con `django-crontab`**: esecuzione automatica dei comandi di import ogni X minuti/ore
 - Endpoint dedicato per standings stagionali (driver/team)
 - Sistema di notifiche per aggiornamenti dati
 
