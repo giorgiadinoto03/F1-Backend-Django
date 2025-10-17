@@ -57,30 +57,37 @@ class ResultViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     pagination_class = DefaultPagination # Apply pagination
     filterset_class = ResultFilter
-    ordering_fields = ['position', 'duration']
     # Ordinamento personalizzato: prima i classificati per posizione, poi i non classificati
-    ordering = ['position', 'duration']
-
+    
     def get_queryset(self):
-        """
-        Ordinamento personalizzato: 
-        1. Prima i piloti classificati ordinati per posizione
-        2. Poi i piloti non classificati (position=None) ordinati per duration
-        """
+
+        # Ordinamento di default (senza filtri):
+        # - Prima per meeting_key (weekend)
+        # - Poi per session_key (evento)
+        # - Dentro la sessione: classificati per posizione
+        # - Non classificati (position=NULL) in fondo, ordinati per duration
+
         queryset = super().get_queryset()
-        
-        # Se non c'è un ordering specifico richiesto, usa il nostro ordinamento personalizzato
+
+        # Se non è richiesto un ordering esplicito via query param, applica il nostro
         if not self.request.query_params.get('ordering'):
-            from django.db.models import F, Case, When, IntegerField
+            from django.db.models import Case, When, IntegerField
+
             queryset = queryset.annotate(
-                # Crea un campo virtuale: 0 per classificati, 1 per non classificati
+                # 0 = classificati (position non null), 1 = non classificati (position null)
                 sort_priority=Case(
                     When(position__isnull=True, then=1),
                     default=0,
                     output_field=IntegerField()
                 )
-            ).order_by('sort_priority', 'position', 'duration')
-        
+            ).order_by(
+                'session__race__meeting_key',
+                'session__session_key',
+                'sort_priority',      # classificati prima (0), non classificati dopo (1)
+                'position',           # tra i classificati, ordina per posizione 1,2,3...
+                'duration'            # tra i non classificati, ordina per duration
+            )
+
         return queryset
 
     def get_serializer_class(self):
