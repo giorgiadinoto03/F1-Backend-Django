@@ -57,9 +57,10 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [ 
         'rest_framework.filters.OrderingFilter',
         'django_filters.rest_framework.DjangoFilterBackend',
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.DefaultPagination', # paginazione con page_size configurabile
+    'PAGE_SIZE': 20, # default page size
 }
-# Questo dice a DRF: “tutte le view che hanno ordering_fields devono usare questo filtro”.
 
 SESSION_ORDER = {
     "Practice 1": 1,

@@ -8,7 +8,6 @@ class Command(BaseCommand):
     help = "Importa tutte le sessioni OpenF1 per ogni meeting salvato"
 
     def handle(self, *args, **kwargs):
-        session_order_map = settings.SESSION_ORDER # Mappa per l'ordine delle sessioni da OpenF1 a Django
 
         races = Race.objects.all()
         if not races.exists():
@@ -47,8 +46,6 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.WARNING(f"Skipping session due to missing 'session_key' or 'session_type' in item: {item}"))
                         continue
 
-                    order_number = session_order_map.get(session_type, 99)
-
                     # Il campo session_key nel tuo modello Session è un IntegerField.
                     # Assicurati che il valore sia un intero prima di passarlo.
                     try:
@@ -63,9 +60,8 @@ class Command(BaseCommand):
                             "race": race,
                             "session_name": item.get("session_name", ""),
                             "session_type": item.get("session_type", ""),
-                            "date_start": item.get("date_start", None),
+                            "date_start": item.get("date_start")or None,
                             "circuit_short_name": item.get("circuit_short_name", ""),
-                            "session_order_number": order_number
                         }
                     )
                     self.stdout.write(self.style.SUCCESS(f"  ✅ Sessione '{item.get('session_name', 'N/A')}' (Key: {session_key}) importata/aggiornata per {race.meeting_name}."))

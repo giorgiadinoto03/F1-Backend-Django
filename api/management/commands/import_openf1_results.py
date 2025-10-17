@@ -1,28 +1,19 @@
 from django.core.management.base import BaseCommand
 from api.models import Session, Driver, Result
 import requests
+from django.db.models import Q
 
 class Command(BaseCommand):
     help = "Importa i risultati delle sessioni da OpenF1"
 
     def handle(self, *args, **kwargs):
-        sessions = Session.objects.filter(session_type__in=["Race", "Qualifying", "Sprint"])
-
+        sessions = Session.objects.filter(
+            Q(session_type__iexact="Race") | Q(session_type__iexact="Qualifying") | Q(session_type__iexact="Sprint")
+        )
         for session in sessions:
-            print(f"Importando risultati per sessione {session.session_key} ({session.session_name})")
+            print(f"Importando risultati per sessione {session.session_key} ({session.session_name}) delle seguenti meeting_key: {session.race.meeting_key}")
 
-            url = f"https://api.openf1.org/v1/results?session_key={session.session_key}"
-            #va modificato con questo url:
-            # from urllib.request import urlopen
-            #import json
-
-            #response = urlopen('https://api.openf1.org/v1/session_result')
-            #data = json.loads(response.read().decode('utf-8'))
-            #print(data)
-
-            # If you want, you can import the results in a DataFrame (you need to install the `pandas` package first)
-            # import pandas as pd
-            # df = pd.DataFrame(data)
+            url = f"https://api.openf1.org/v1/session_result?session_key={session.session_key}"
             try:
                 response = requests.get(url)
                 data = response.json()
@@ -54,18 +45,41 @@ class Command(BaseCommand):
                     },
                 )
 
-                Result.objects.update_or_create(
-                    session=session,
-                    driver=driver,
-                    defaults={
-                        "position": item.get("position", 0),
-                        "time": item.get("time", None),
-                        "gap_to_leader": item.get("gap_to_leader", None),
-                        "q1": item.get("q1", None),
-                        "q2": item.get("q2", None),
-                        "q3": item.get("q3", None),
-                    },
-                )
+                # Determina il valore del tempo da salvare
+                time_value = item.get("duration")  # OpenF1 usa 'duration' al posto di 'time'
+                session_type = (session.session_type or "").lower()
+
+                # Fallback per Qualifiche: usa il miglior tempo tra Q3, poi Q2, poi Q1 se 'duration' manca
+                if session_type == "qualifying" and not time_value:
+                    time_value = item.get("q3") or item.get("q2") or item.get("q1")
+
+                # Gestisci la posizione: usa None se non è presente o è 0
+                position_value = item.get("position")
+                if position_value is None or position_value == 0:
+                    position_value = None
+
+                existing = Result.objects.filter(session=session, driver=driver)
+                if existing.exists():
+                    existing.update(
+                        position=position_value,
+                        duration=time_value,
+                        gap_to_leader=item.get("gap_to_leader", None),
+                        q1=item.get("q1", None),
+                        q2=item.get("q2", None),
+                        q3=item.get("q3", None),
+                    )
+                else:
+                    Result.objects.create(
+                        session=session,
+                        driver=driver,
+                        position=position_value,
+                        duration=time_value,
+                        gap_to_leader=item.get("gap_to_leader", None),
+                        q1=item.get("q1", None),
+                        q2=item.get("q2", None),
+                        q3=item.get("q3", None),
+                    )
+
 
         total = Result.objects.count()
         self.stdout.write(self.style.SUCCESS(f"✅ Risultati importati con successo ({total} totali)"))

@@ -67,12 +67,20 @@ class Session(models.Model):
 class Result(models.Model):
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="results")
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name="results")
-    position = models.IntegerField()
-    time = models.CharField(max_length=50, blank=True, null=True)
+    position = models.IntegerField(blank=True, null=True)
+    duration = models.CharField(max_length=50, blank=True, null=True)
     gap_to_leader = models.CharField(max_length=50, blank=True, null=True)
     q1 = models.CharField(max_length=50, blank=True, null=True)
     q2 = models.CharField(max_length=50, blank=True, null=True)
     q3 = models.CharField(max_length=50, blank=True, null=True)
+
+    class Meta:
+        # Aggiungi questi indici per migliorare le performance delle query comuni
+        indexes = [
+            models.Index(fields=['session', 'driver']), # Utile per query su sessione e driver specifici
+            models.Index(fields=['session', 'position']), # Utile per ordinare i risultati di una sessione per posizione
+            models.Index(fields=['driver', 'position']), # Utile per trovare i risultati di un driver specifico in base alla posizione
+        ]
 
     def __str__(self):
         return f"{self.session.session_name} - {self.driver.full_name} ({self.position})"
